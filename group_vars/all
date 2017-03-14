@@ -1,0 +1,2 @@
+default_zone: "us-east-1"
+default_image: "rhel73"

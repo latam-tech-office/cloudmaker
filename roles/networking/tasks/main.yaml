@@ -1,0 +1,7 @@
+- name: Create a simple Network
+  vars:
+     machine_type: n1-standard-1 # default value
+     service_account_email: "
+  tasks:
+     - name: Create a Networking
+       gce_net: name="Testing"  

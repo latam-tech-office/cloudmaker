@@ -1,0 +1,17 @@
+---
+- name: Test
+  hosts: localhost
+  connection: local
+  vars:
+     machine_type: n1-standard-1
+     zone: us-east1-c
+     service_account_email: "testing-service-account@quick-cacao-157517.iam.gserviceaccount.com"
+     credentials_file: "gce/credentials/my-first-project.json"
+     project_id: "quick-cacao-157517"
+  tasks:
+     - name: Create instance
+       gce: instance_names="Hello" machine_type={{ machine_type }} image="rhel73"
+                service_account_email={{ service_account_email }} credentials_file={{ credentials_file }} project_id={{ project_id }}  
+       register: networking
+
+     - debug: var=networking
