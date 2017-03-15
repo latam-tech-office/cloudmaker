@@ -1,0 +1,32 @@
+- name: Variable exists ? {{ ':' }} cloud_selection
+  fail: msg="Variable \"cloud_selection\" wasn't defined"
+  when: cloud_selection is not defined
+
+- name: Variable exists ? {{ ':' }} project_name
+  fail: msg="Variable \"project_name\" wasn't defined" 
+  when: project_name is not defined
+
+- name: Variable exists ? {{ ':' }} openshift
+  fail: msg="Variable \"openshift\" wasn't defined"
+  when: openshift is not defined
+
+- name: Variable exists ? {{ ':' }} openshift_firewall_rules
+  fail: msg="Variable \"openshift_firewall_rules\" wasn't defined"
+  when: openshift_firewall_rules is not defined
+
+### GOOGLE CLOUD ENGINE GOOGLE CLOUD ENGINE GOOGLE CLOUD ENGINE GOOGLE CLOUD ENGINE 
+###   GOOGLE CLOUD ENGINE GOOGLE CLOUD ENGINE GOOGLE CLOUD ENGINE GOOGLE CLOUD ENGINE 
+
+- name: GCE{{ ':' }} Variable exists ? {{ ':' }} gce_service_account_email
+  fail: msg="Variable \"gce_service_account_email\" wasn't defined"
+  when: cloud_selection == "GCE" and gce_service_account_email is not defined
+
+- name: GCE{{ ':' }} Variable exists ? {{ ':' }} gce_credentials_file
+  fail: msg="Variable \"gce_credentials_file\" wasn't defined"
+  when: cloud_selection == "GCE" and gce_credentials_file is not defined
+
+- name: GCE{{ ':' }} Variable exists ? {{ ':' }} gce_project_id
+  fail: msg="Variable \"gce_project_id\" wasn't defined"
+  when: cloud_selection == "GCE" and gce_project_id is not defined
+
+

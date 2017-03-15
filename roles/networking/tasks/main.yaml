@@ -1,7 +1,35 @@
-- name: Create a simple Network
-  vars:
-     machine_type: n1-standard-1 # default value
-     service_account_email: "
-  tasks:
-     - name: Create a Networking
-       gce_net: name="Testing"  
+- set_fact: network_name={{ project_name }}
+  when: network_name is not defined
+  tags:
+     - networking
+
+- set_fact: subnetwork_name={{ network_name }}-subnet
+  when: subnetwork_name is not defined
+  tags:
+     - networking
+
+- set_fact: subnetwork_range="192.168.0.0/16"
+  when: subnetwork_range is not defined
+  tags:
+     - networking
+
+- set_fact: region={{ gce_default_region }}
+  when: region is not defined
+
+- name: Creating a specific Network for OpenShift named {{ ':' }} {{ network_name }}
+  gce_net: name="{{ network_name }}"  state="present"
+           mode="custom" subnet_name="{{ subnetwork_name }}" subnet_region="{{ region }}" ipv4_range="{{ subnetwork_range }}"
+           project_id="{{ gce_project_id }}" credentials_file="{{ gce_credentials_file }}" service_account_email="{{ gce_service_account_email }}"
+  tags:
+     - networking
+     - gce
+
+- name: Creating all the necessary firewall fules for this Network
+  gce: name="{{ network_name }}"      state="present" src_tags="{{ item.tag }}"
+       fwname="{{ item.name }}" allowed="{{ item.allow }}"
+       project_id="{{ gce_project_id }}" credentials_file="{{ gce_credentials_file }}" service_account_email="{{ gce_service_account_email }}"
+  with_items: "{{ openshift_firewall_rules }}"
+  tags:
+     - networking
+     - gce 
+     - firewall

@@ -1,4 +1,14 @@
-service_account_email: maltron@quick-cacao-157517.iam.gserviceaccount.com
-credentials_file: /home/mauricio/.gce/maltron.json
-project_id: quick-cacao-157517
+gce_service_account_email: maltron@quick-cacao-157517.iam.gserviceaccount.com
+gce_credentials_file: /home/mauricio/.gce/maltron.json
+gce_project_id: quick-cacao-157517
+
+### Please add the following information in each task in your playbook
+### project_id="{{ gce_project_id }}" credentials_file="{{ gce_credentials_file }}" service_account_email="{{ gce_service_account_email }}"
+###
+### Example:
+### 
+###    - name: Create a Network named maltron
+###      gce_net: name="maltron"
+###               mode="custom" subnet_name="maltron-subnet" subnet_region="{{ region }}" ipv4_range="192.168.0.0/16"
+###               project_id="{{ gce_project_id }}" credentials_file="{{ gce_credentials_file }}" service_account_email="{{ gce_service_account_email }}"
 

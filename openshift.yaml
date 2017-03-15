@@ -1,11 +1,14 @@
+#!/usr/bin/env ansible-playbook
 ---
 - name: Installing OpenShift Container Platform
   hosts: localhost
   connection: local
   gather_facts: False
   vars_files:
+     - cloud.info
      - gce/authentication
      - gce/defaults
   roles:
+     - check
      - networking
   
