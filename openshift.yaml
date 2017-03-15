@@ -1,0 +1,11 @@
+---
+- name: Installing OpenShift Container Platform
+  hosts: localhost
+  connection: local
+  gather_facts: False
+  vars_files:
+     - gce/authentication
+     - gce/defaults
+  roles:
+     - networking
+  

@@ -1,0 +1,3 @@
+default_machine_type: n1-standard-1
+default_region: us-east1
+

@@ -1,0 +1,4 @@
+service_account_email: maltron@quick-cacao-157517.iam.gserviceaccount.com
+credentials_file: /home/mauricio/.gce/maltron.json
+project_id: quick-cacao-157517
+
