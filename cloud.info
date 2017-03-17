@@ -1,6 +1,7 @@
 # Select your Cloud Provider. Options are: GCE, AWS (soon), AZURE (soon)
 cloud_selection: GCE
-region: us-east1                    # Optional
+region: us-east1                        # Optional
+zone:   "{{ region }}-c"                # Optional
 
 # Specific information to create a Cloud
 project_name: helloworld
@@ -9,11 +10,15 @@ subnetwork_name: helloworld-subnet  # Optional
 subnetwork_range: 192.168.0.0/16    # Optional
 
 # OpenShift Nodes
+openshift_master_identification: master
 openshift: 
-   - {"name":"master", "ip":"192.168.0.100" }
-   - {"name":"infra",  "ip":"192.168.0.199" }
-   - {"name":"node1", "ip":"192.168.0.100" }
-   - {"name":"node2", "ip":"192.168.0.101" }
+   - { name: "{{ openshift_master_identification }}", machine: "{{ gce_default_machine_type }}",  tags: ["enable-ssh","openshift-master"], disk: 100, disk_docker: 10 }
+   - { name: "infra",  machine: "{{ gce_default_machine_type }}",  tags: ["enable-ssh", "openshift-node", "openshift-infra-node"], disk: 100, disk_docker: 10 }
+#   - { name: "node1", machine: "{{ gce_default_machine_type }}",  tags: ["enable-ssh","openshift-master"] }
+#   - { name: "node2", machine: "{{ gce_default_machine_type }}",  tags: ["enable-ssh","openshift-master"] }
+#   - {"name":"infra", "machine":"{{ gce_default_machine_type }}", "disk_size":10 , "disk_docker_size":10 } 
+#   - {"name":"node1", "machine":"{{ gce_default_machine_type }}", "disk_size":10 , "disk_docker_size":10 }
+#   - {"name":"node2", "machine":"{{ gce_default_machine_type }}", "disk_size":10 , "disk_docker_size":10 } 
 
 openshift_firewall_rules:
    - { "name":"enable-ssh",                  "allow":"tcp{{ ':' }}22",               "range":"0.0.0.0/0",              "tag":"enable-ssh" }

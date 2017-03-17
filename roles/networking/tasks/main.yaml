@@ -25,9 +25,9 @@
      - gce
 
 - name: Creating all the necessary firewall fules for this Network
-  gce: name="{{ network_name }}"      state="present" src_tags="{{ item.tag }}"
-       fwname="{{ item.name }}" allowed="{{ item.allow }}"
-       project_id="{{ gce_project_id }}" credentials_file="{{ gce_credentials_file }}" service_account_email="{{ gce_service_account_email }}"
+  gce_net: name="{{ network_name }}"  state="present"
+           fwname="{{ item.name }}" allowed="{{ item.allow }}" src_tags="{{ item.tag }}" src_range="{{ item.range }}"
+           project_id="{{ gce_project_id }}" credentials_file="{{ gce_credentials_file }}" service_account_email="{{ gce_service_account_email }}"
   with_items: "{{ openshift_firewall_rules }}"
   tags:
      - networking

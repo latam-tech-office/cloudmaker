@@ -1,6 +1,6 @@
 #!/usr/bin/env ansible-playbook
 ---
-- name: Installing OpenShift Container Platform
+- name: Creating all the necessary instances
   hosts: localhost
   connection: local
   gather_facts: False
@@ -8,7 +8,132 @@
      - cloud.info
      - gce/authentication
      - gce/defaults
-  roles:
-     - check
-     - networking
-  
+  tasks:
+    - set_fact: region={{ gce_default_region }}
+      when: region is not defined
+
+    - set_fact: zone={{ gce_default_zone }}
+      when: zone is not defined
+
+    - name: Creating each instance
+      gce:
+        instance_names: "{{ item.name }}"
+        state: "present"
+        machine_type: "{{ item.machine }}"
+        image: "rhel73"
+        zone: "{{ zone }}"
+        network: "helloworld"
+        subnetwork: "helloworld-subnet"
+        tags: "{{ item.tags }}"
+#        disks:
+#           - name: "{{ item.name }}-main"
+#             mode: READ_WRITE
+#           - name: "{{ item.name }}-docker"
+#             mode: READ_WRITE
+        disk_auto_delete: True 
+        project_id: "{{ gce_project_id }}"
+        credentials_file: "{{ gce_credentials_file }}"
+        service_account_email: "{{ gce_service_account_email }}"
+      with_items: "{{ openshift }}"
+      register: instances_creation
+
+    - name: Attaching a Docker storage area
+      gce_pd:
+        instance_name: "{{ item.name }}"
+        name: "{{ item.name }}-docker"
+        state: present
+        mode: READ_WRITE
+        disk_type: pd-standard
+        size_gb: "{{ item.disk_docker }}"
+        zone: "{{ zone }}"
+        project_id: "{{ gce_project_id }}"
+        credentials_file: "{{ gce_credentials_file }}"
+        service_account_email: "{{ gce_service_account_email }}"
+      with_items: "{{ openshift }}"
+      tags:
+         - storage
+         - docker_disk
+
+    - debug: var=instances_creation
+
+    - name: Wait for the instance to be running on port 22
+      wait_for: host="{{ item.instance_data[0].public_ip }}" port=22   delay=30  state=started
+      with_items: "{{ instances_creation.results }}"
+      tags:
+         - wait_for
+
+    - name: Save host data for second zone
+      add_host: hostname={{ item.instance_data[0].public_ip }} groups=openshift_nodes 
+                ansible_ssh_user=root ansible ansible_ssh_port=22
+      with_items: "{{ instances_creation.results }}"
+
+    - name: Save host label as Master in a different section
+      add_host: hostname={{ item.instance_data[0].public_ip }} groups=openshift_master
+                ansible_ssh_user=root ansible ansible_ssh_port=22
+      with_items: "{{ instances_creation.results }}"
+      when: "{{ item.instance_names[0] == openshift_master_identification }}"
+
+- name: Preparing all hosts to install OpenShift
+  hosts: openshift_master,openshift_nodes
+  vars:
+    prereqs_packages:
+      - vim
+      - wget
+      - git
+      - net-tools
+      - bind-utils
+      - docker
+      - atomic-openshift-excluder
+      - atomic-openshift-docker-excluder
+      - iptables-services
+      - bridge-utils
+      - bash-completion
+      - docker
+      - httpd-tools
+    docker_device: /dev/sdb
+    docker_device_partition: "{{ docker_device }}1"
+  tasks:
+    - name: Installing Basic Applications
+      yum: name="{{ item }}" state=present
+      with_items: "{{ prereqs_packages }}"
+      tags:
+         - prepare
+
+    - name: Create a partition for Docker
+      command: parted {{ docker_device }} --script 'mklabel msdos mkpart primary 0% 100%'
+      tags:
+         - prepare
+
+    - name: Create a VG named docker-vg (used for Docker)
+      lvg: vg=docker-vg pvs={{ docker_device_partition }}
+      tags:
+         - prepare
+
+    - name: Configuring Docker-Storage-Setup first
+      lineinfile: dest=/etc/sysconfig/docker-storage-setup line="VG=docker-vg"
+      tags:
+         - prepare
+
+    - name: Run a Docker-Storage-Setup
+      command: /usr/bin/docker-storage-setup
+      tags:
+         - prepare
+
+    - name: Execute a Atomic OpenShift Excluder
+      command: atomic-openshift-excluder unexclude
+      tags:
+         - prepare
+
+    - name: Setting Docker configuration with with the correct info
+      lineinfile: dest=/etc/sysconfig/docker regexp="OPTIONS=.*" line="OPTIONS=\"--selinux-enabled --insecure-registry 172.30.0.0/16  --log-driver=journald\""
+      tags:
+         - prepare
+
+- name: Installing OpenShift's installer on Master
+  hosts: openshift_master
+  tasks:
+    - name: Installing installer
+      yum: name="atomic-openshift-utils" state=present
+      tags:
+         - prepare
+

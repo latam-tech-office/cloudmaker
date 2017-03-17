@@ -1,0 +1,8 @@
+- hosts: localhost
+  gather_facts: False
+  vars:
+     name:
+       - { name: "master", machine: "n1-standard-1",  tags: ["enable-ssh","openshift-master"] }
+  tasks:
+    - debug: msg="Name is {{ item.name }} and letters are {{ item.tags }}"
+      with_items: "{{ name }}"
