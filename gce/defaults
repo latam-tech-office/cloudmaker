@@ -1,4 +1,6 @@
 gce_default_machine_type: n1-standard-1
 gce_default_region: us-east1
 gce_default_zone:   us-east1-c
+gce_default_network: helloworld
+gce_default_subnetwork: helloworld-subnet
 

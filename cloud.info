@@ -9,11 +9,15 @@ network_name: helloworld            # Optional
 subnetwork_name: helloworld-subnet  # Optional
 subnetwork_range: 192.168.0.0/16    # Optional
 
-# OpenShift Nodes
-openshift_master_identification: master
-openshift: 
-   - { name: "{{ openshift_master_identification }}", machine: "{{ gce_default_machine_type }}",  tags: ["enable-ssh","openshift-master"], disk: 100, disk_docker: 10 }
+# OpenShift Specific Information
+openshift_domain: example.com
+openshift_master: 
+   - { name: "master", machine: "{{ gce_default_machine_type }}",  tags: ["enable-ssh","openshift-master"], disk: 100, disk_docker: 10 }
+
+openshift_infra:
    - { name: "infra",  machine: "{{ gce_default_machine_type }}",  tags: ["enable-ssh", "openshift-node", "openshift-infra-node"], disk: 100, disk_docker: 10 }
+
+#openshift_node:
 #   - { name: "node1", machine: "{{ gce_default_machine_type }}",  tags: ["enable-ssh","openshift-master"] }
 #   - { name: "node2", machine: "{{ gce_default_machine_type }}",  tags: ["enable-ssh","openshift-master"] }
 #   - {"name":"infra", "machine":"{{ gce_default_machine_type }}", "disk_size":10 , "disk_docker_size":10 } 

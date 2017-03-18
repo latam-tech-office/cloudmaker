@@ -11,19 +11,55 @@
   tasks:
     - set_fact: region={{ gce_default_region }}
       when: region is not defined
+      tags:
+         - create
+         - master
+         - infra
+         - node
 
     - set_fact: zone={{ gce_default_zone }}
       when: zone is not defined
+      tags:
+         - create
+         - master
+         - infra
+         - node
 
-    - name: Creating each instance
+    - set_fact: network={{ gce_default_network }}
+      when: network is not defined
+      tags:
+         - create
+         - master
+         - infra
+         - node
+    
+    - set_fact: subnetwork={{ gce_default_subnetwork }}
+      when: subnetwork is not defined
+      tags:
+         - create
+         - master
+         - infra
+         - node
+
+    - set_fact: all_instances="{{ openshift_master }}"
+      when: openshift_master is defined
+      tags:
+         - create
+         - master
+         - infra
+         - node
+
+### MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER 
+###  MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER 
+    - name: Creating OpenShift's Master instances
       gce:
         instance_names: "{{ item.name }}"
         state: "present"
         machine_type: "{{ item.machine }}"
         image: "rhel73"
         zone: "{{ zone }}"
-        network: "helloworld"
-        subnetwork: "helloworld-subnet"
+        network: "{{ network }}"
+        subnetwork: "{{ subnetwork }}"
         tags: "{{ item.tags }}"
 #        disks:
 #           - name: "{{ item.name }}-main"
@@ -34,10 +70,14 @@
         project_id: "{{ gce_project_id }}"
         credentials_file: "{{ gce_credentials_file }}"
         service_account_email: "{{ gce_service_account_email }}"
-      with_items: "{{ openshift }}"
-      register: instances_creation
+      with_items: "{{ openshift_master }}"
+      register: master_instance_creation
+      when: openshift_master is defined
+      tags:
+         - create
+         - master
 
-    - name: Attaching a Docker storage area
+    - name: Attaching a Docker storage area for OpenShift's Master instances
       gce_pd:
         instance_name: "{{ item.name }}"
         name: "{{ item.name }}-docker"
@@ -49,32 +89,173 @@
         project_id: "{{ gce_project_id }}"
         credentials_file: "{{ gce_credentials_file }}"
         service_account_email: "{{ gce_service_account_email }}"
-      with_items: "{{ openshift }}"
+      with_items: "{{ openshift_master }}"
       tags:
+         - create
+         - storage
+         - docker_disk
+         - master
+
+#    - debug: var=master_instance_creation
+#      tags:
+#         - create
+#         - master
+
+    - name: Save host data for OpenShift's Master
+      add_host: hostname={{ item.instance_data[0].public_ip }} groups=openshift_master
+                ansible_ssh_user=root ansible_ssh_port=22  instance_name={{ item.instance_names[0] }}
+      with_items: "{{ master_instance_creation.results }}"
+      when: master_instance_creation is defined
+      tags:
+         - create
+         - master
+
+### INFRA INFRA INFRA INFRA INFRA INFRA INFRA INFRA INFRA INFRA INFRA INFRA INFRA INFRA INFRA 
+###  INFRA INFRA INFRA INFRA INFRA INFRA INFRA INFRA INFRA INFRA INFRA INFRA INFRA INFRA INFRA 
+    - name: Creating OpenShift's Infra instances
+      gce:
+         instance_names: "{{ item.name }}"
+         state: "present"
+         machine_type: "{{ item.machine }}"
+         image: "rhel73"
+         zone: "{{ zone }}"
+         network: "{{ network }}"
+         subnetwork: "{{ subnetwork }}"
+         tags: "{{ item.tags }}"
+#        disks:
+#           - name: "{{ item.name }}-main"
+#             mode: READ_WRITE
+#           - name: "{{ item.name }}-docker"
+#             mode: READ_WRITE
+         disk_auto_delete: True
+         project_id: "{{ gce_project_id }}"
+         credentials_file: "{{ gce_credentials_file }}"
+         service_account_email: "{{ gce_service_account_email }}"
+      with_items: "{{ openshift_infra }}"
+      register: infra_instance_creation
+      when: openshift_infra is defined
+      tags:
+         - create
+         - infra
+
+    - name: Attaching a Docker storage area for OpenShift's Infra instances
+      gce_pd:
+        instance_name: "{{ item.name }}"
+        name: "{{ item.name }}-docker"
+        state: present
+        mode: READ_WRITE
+        disk_type: pd-standard
+        size_gb: "{{ item.disk_docker }}"
+        zone: "{{ zone }}"
+        project_id: "{{ gce_project_id }}"
+        credentials_file: "{{ gce_credentials_file }}"
+        service_account_email: "{{ gce_service_account_email }}"
+      with_items: "{{ openshift_infra }}"
+      when: openshift_infra is defined
+      tags:
+         - create
+         - infra
          - storage
          - docker_disk
 
-    - debug: var=instances_creation
+    - name: Save host data for OpenShift's Infra
+      add_host: hostname={{ item.instance_data[0].public_ip }} groups=openshift_infra
+                ansible_ssh_user=root ansible_ssh_port=22   instance_name={{ item.instance_names[0] }}
+      with_items: "{{ infra_instance_creation.results }}"
+      when: infra_instance_creation is defined
+      tags: 
+         - create
+         - infra
 
-    - name: Wait for the instance to be running on port 22
+### NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE 
+###   NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE 
+    - name: Creating OpenShift's Node instances
+      gce:
+         instance_names: "{{ item.name }}"
+         state: "present"
+         machine_type: "{{ item.machine }}"
+         image: "rhel73"
+         zone: "{{ zone }}"
+         network: "{{ network }}"
+         subnetwork: "{{ subnetwork }}"
+         tags: "{{ item.tags }}"
+#        disks:
+#           - name: "{{ item.name }}-main"
+#             mode: READ_WRITE
+#           - name: "{{ item.name }}-docker"
+#             mode: READ_WRITE
+         disk_auto_delete: True
+         project_id: "{{ gce_project_id }}"
+         credentials_file: "{{ gce_credentials_file }}"
+         service_account_email: "{{ gce_service_account_email }}"
+      with_items: "{{ openshift_node }}"
+      register: node_instance_creation
+      when: openshift_node is defined
+      tags:
+         - create
+         - node
+
+    - name: Attaching a Docker storage area for OpenShift's Node instances
+      gce_pd:
+        instance_name: "{{ item.name }}"
+        name: "{{ item.name }}-docker"
+        state: present
+        mode: READ_WRITE
+        disk_type: pd-standard
+        size_gb: "{{ item.disk_docker }}"
+        zone: "{{ zone }}"
+        project_id: "{{ gce_project_id }}"
+        credentials_file: "{{ gce_credentials_file }}"
+        service_account_email: "{{ gce_service_account_email }}"
+      with_items: "{{ openshift_node }}"
+      when: openshift_node is defined
+      tags:
+         - storage
+         - docker_disk
+         - create
+         - node
+
+    - name: Save host data for OpenShift's Node
+      add_host: hostname={{ item.instance_data[0].public_ip }} groups=openshift_nodes
+                ansible_ssh_user=root ansible_ssh_port=22  instance_name={{ item.instance_names[0] }}
+      with_items: "{{ node_instance_creation.results }}"
+      when: node_instance_creation is defined and openshift_node is defined
+      tags:
+         - create
+         - node
+
+### WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR 
+###   WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR 
+    - name: Wait for OpenShift's Master instances to be up
       wait_for: host="{{ item.instance_data[0].public_ip }}" port=22   delay=30  state=started
-      with_items: "{{ instances_creation.results }}"
+      with_items: "{{ master_instance_creation.results }}"
+      when: master_instance_creation is defined and openshift_master is defined
       tags:
          - wait_for
 
-    - name: Save host data for second zone
-      add_host: hostname={{ item.instance_data[0].public_ip }} groups=openshift_nodes 
-                ansible_ssh_user=root ansible ansible_ssh_port=22
-      with_items: "{{ instances_creation.results }}"
+    - name: Wait for OpenShift's Infra instances to be up
+      wait_for: host="{{ item.instance_data[0].public_ip }}" port=22   delay=30  state=started
+      with_items: "{{ infra_instance_creation.results }}"
+      when: infra_instance_creation is defined and openshift_infra is defined
+      tags:
+         - wait_for
 
-    - name: Save host label as Master in a different section
-      add_host: hostname={{ item.instance_data[0].public_ip }} groups=openshift_master
-                ansible_ssh_user=root ansible ansible_ssh_port=22
-      with_items: "{{ instances_creation.results }}"
-      when: "{{ item.instance_names[0] == openshift_master_identification }}"
+    - name: Wait for OpenShift's Node instances to be up
+      wait_for: host="{{ item.instance_data[0].public_ip }}" port=22   delay=30  state=started
+      with_items: "{{ node_instance_creation.results }}"
+      when: node_instance_creation is defined and openshift_node is defined
+      tags:
+         - wait_for
+
+### TEMPLATE TEMPLATE TEMPLATE TEMPLATE TEMPLATE TEMPLATE TEMPLATE TEMPLATE TEMPLATE TEMPLATE 
+###  TEMPLATE TEMPLATE TEMPLATE TEMPLATE TEMPLATE TEMPLATE TEMPLATE TEMPLATE TEMPLATE TEMPLATE 
+    - name: Generating the first version of the inventory file
+      template: src=templates/ansible_hosts.j2 dest=/tmp/ansible_hosts.j2
+      tags: 
+         - openshift_inventory
 
 - name: Preparing all hosts to install OpenShift
-  hosts: openshift_master,openshift_nodes
+  hosts: all
   vars:
     prereqs_packages:
       - vim
@@ -93,6 +274,16 @@
     docker_device: /dev/sdb
     docker_device_partition: "{{ docker_device }}1"
   tasks:
+    - name: Use Cloud's Provider internal name as hostname
+      set_fact: internal_hostname={{ instance_name }}.{{ ansible_dns.search[0] }}
+      tags:
+         - prepare
+
+    - name: Setting the hostname
+      command: hostnamectl set-hostname {{ internal_hostname }}
+      tags:
+         - prepare       
+
     - name: Installing Basic Applications
       yum: name="{{ item }}" state=present
       with_items: "{{ prereqs_packages }}"
@@ -129,11 +320,80 @@
       tags:
          - prepare
 
+
+### MASTER INVENTORY MASTER INVENTORY MASTER INVENTORY MASTER INVENTORY MASTER INVENTORY MASTER INVENTORY 
+###  MASTER INVENTORY MASTER INVENTORY MASTER INVENTORY MASTER INVENTORY MASTER INVENTORY MASTER INVENTORY 
+- name: Updating inventory file with OpenShit's Master hostname
+  hosts: openshift_master
+  serial: 1
+  vars_files:
+     - cloud.info
+     - gce/authentication
+     - gce/defaults  
+  tasks:
+    - name: MASTER{{ ':' }} Use Cloud's Provider internal name as hostname
+      set_fact: internal_hostname={{ instance_name }}.{{ ansible_dns.search[0] }}
+      tags:
+         - master_inventory
+
+    - name: MASTER{{ ':' }} Adding Hostname into the Invetory file, Master's Section
+      local_action: lineinfile dest=/tmp/ansible_hosts.j2 insertafter="\[masters\]" state="present" line="{{ internal_hostname }}"
+      tags:
+         - master_inventory
+
+    - name: MASTER{{ ':' }} Adding Hostname into the Inventory file, Node's Section
+      local_action: lineinfile dest=/tmp/ansible_hosts.j2 insertafter="\[nodes\]" state="present" line="{{ internal_hostname }} openshift_public_hostname={{ instance_name }}.{{ openshift_domain }}"
+      tags:
+         - master_inventory
+
+### INFRA INVENTORY INFRA INVENTORY INFRA INVENTORY INFRA INVENTORY INFRA INVENTORY INFRA INVENTORY INFRA
+###   INFRA INVENTORY INFRA INVENTORY INFRA INVENTORY INFRA INVENTORY INFRA INVENTORY INFRA INVENTORY INFRA
+- name: Updating inventory file with OpenShit's Infra hostname
+  hosts: openshift_infra
+  serial: 1
+  vars_files:
+     - cloud.info
+     - gce/authentication
+     - gce/defaults
+  tasks:
+    - name: INFRA{{ ':' }} Use Cloud's Provider internal name as hostname
+      set_fact: internal_hostname={{ instance_name }}.{{ ansible_dns.search[0] }}
+      tags:
+         - infra_inventory
+
+    - name: INFRA{{ ':' }} Adding Hostname into the Inventory file, Node's Section
+      local_action: lineinfile dest=/tmp/ansible_hosts.j2 insertafter="\[nodes\]" state="present" line="{{ internal_hostname }} openshift_node_labels=\"{'host'{{ ':' }} 'infra'}\""
+      tags:
+         - infra_inventory
+
+- name: Updating inventory file with OpenShit's Node hostname
+  hosts: openshift_nodes
+  serial: 1
+  vars_files:
+     - cloud.info
+     - gce/authentication
+     - gce/defaults
+  tasks:
+    - name: NODE{{ ':' }} Use Cloud's Provider internal name as hostname
+      set_fact: internal_hostname={{ instance_name }}.{{ ansible_dns.search[0] }}
+      tags:
+         - node_inventory
+
+    - name: NODE{{ ':' }} Adding Hostname into the Inventory file, Node's Section
+      local_action: lineinfile dest=/tmp/ansible_hosts.j2 insertafter="\[nodes\]" state="present" line="{{ node_inventory }} openshift_node_labels=\"{'host'{{ ':' }} 'apps'}\""
+      tags:
+         - node_inventory
+
 - name: Installing OpenShift's installer on Master
   hosts: openshift_master
   tasks:
-    - name: Installing installer
+    - name: MASTER{{ ':' }} Creating inventory file into OpenShift's Master
+      template: src=/tmp/ansible_hosts.j2 dest=/etc/ansible/hosts
+      tags:
+         - openshift_install
+
+    - name: MASTER{{ ':' }} Installing installer
       yum: name="atomic-openshift-utils" state=present
       tags:
-         - prepare
+         - openshift_install
 

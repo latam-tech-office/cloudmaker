@@ -15,7 +15,16 @@
     - set_fact: zone={{ gce_default_zone }}
       when: zone is not defined
 
-    - name: Deleting each instance
+    - set_fact: all_instances="{{ openshift_master }}"
+      when: openshift_master is defined
+   
+    - set_fact: all_instances="{{ all_instances }} + {{ openshift_infra }}"
+      when: openshift_infra is defined
+
+    - set_fact: all_instances="{{ all_instances }} + {{ openshift_node }}"
+      when: openshift_node is defined
+
+    - name: Deleting OpenShift's Master instances
       gce:
         instance_names: "{{ item.name }}"
         zone: "{{ zone }}"
@@ -23,7 +32,7 @@
         project_id: "{{ gce_project_id }}"
         credentials_file: "{{ gce_credentials_file }}"
         service_account_email: "{{ gce_service_account_email }}"
-      with_items: "{{ openshift }}"
+      with_items: "{{ all_instances }}"
       register: 
 
     - name: Deleting all Docker Storages
@@ -34,4 +43,4 @@
         project_id: "{{ gce_project_id }}"
         credentials_file: "{{ gce_credentials_file }}"
         service_account_email: "{{ gce_service_account_email }}"
-      with_items: "{{ openshift }}"
+      with_items: "{{ all_instances }}"

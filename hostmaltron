@@ -1,0 +1,3 @@
+[registry]
+server-one ansible_ssh_host=192.168.1.138 ansible_ssh_port=22 ansible_ssh_user=root thisserver=one
+server-two ansible_ssh_host=192.168.1.138 ansible_ssh_port=22 ansible_ssh_user=root thisserver=two
