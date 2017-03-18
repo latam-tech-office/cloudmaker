@@ -33,7 +33,6 @@
         credentials_file: "{{ gce_credentials_file }}"
         service_account_email: "{{ gce_service_account_email }}"
       with_items: "{{ all_instances }}"
-      register: 
 
     - name: Deleting all Docker Storages
       gce_pd:

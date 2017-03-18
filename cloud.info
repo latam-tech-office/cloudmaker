@@ -12,20 +12,39 @@ subnetwork_range: 192.168.0.0/16    # Optional
 # OpenShift Specific Information
 openshift_domain: example.com
 openshift_master: 
-   - { name: "master", machine: "{{ gce_default_machine_type }}",  tags: ["enable-ssh","openshift-master"], disk: 100, disk_docker: 10 }
+   - { name: "master", machine: "{{ gce_default_machine_type }}",  tags: ["enable-ssh","openshift-master"], disk_docker: 10 }
 
 openshift_infra:
-   - { name: "infra",  machine: "{{ gce_default_machine_type }}",  tags: ["enable-ssh", "openshift-node", "openshift-infra-node"], disk: 100, disk_docker: 10 }
+   - { name: "infra",  machine: "{{ gce_default_machine_type }}",  tags: ["enable-ssh", "openshift-node", "openshift-infra-node"], disk_docker: 10 }
 
-#openshift_node:
-#   - { name: "node1", machine: "{{ gce_default_machine_type }}",  tags: ["enable-ssh","openshift-master"] }
-#   - { name: "node2", machine: "{{ gce_default_machine_type }}",  tags: ["enable-ssh","openshift-master"] }
-#   - {"name":"infra", "machine":"{{ gce_default_machine_type }}", "disk_size":10 , "disk_docker_size":10 } 
-#   - {"name":"node1", "machine":"{{ gce_default_machine_type }}", "disk_size":10 , "disk_docker_size":10 }
-#   - {"name":"node2", "machine":"{{ gce_default_machine_type }}", "disk_size":10 , "disk_docker_size":10 } 
+openshift_node:
+   - { name: "node1", machine: "{{ gce_default_machine_type }}",  tags: ["enable-ssh","openshift-node"], disk_docker: 10 }
+   - { name: "node2", machine: "{{ gce_default_machine_type }}",  tags: ["enable-ssh","openshift-node"], disk_docker: 10 }
+#   - { name: "node3", machine: "{{ gce_default_machine_type }}",  tags: ["enable-ssh","openshift-node"], disk_docker: 10 }
+#   - { name: "node4", machine: "{{ gce_default_machine_type }}",  tags: ["enable-ssh","openshift-node"], disk_docker: 10 }
 
 openshift_firewall_rules:
    - { "name":"enable-ssh",                  "allow":"tcp{{ ':' }}22",               "range":"0.0.0.0/0",              "tag":"enable-ssh" }
    - { "name":"master",                      "allow":"tcp{{ ':' }}8443,9090",        "range":"0.0.0.0/0",              "tag":"openshift-master" }
    - { "name":"infranode",                   "allow":"tcp{{ ':' }}80,443,1936",      "range":"0.0.0.0/0",              "tag":"openshift-infra-node" }
    - { "name":"internal-node-communication", "allow":"tcp:0-65535;udp:0-65535;icmp", "range":"{{ subnetwork_range }}", "tag":"openshift-node" }
+
+### Packages needed to install before running OpenShift's installation
+prereqs_packages:
+  - vim
+  - wget
+  - git
+  - net-tools
+  - bind-utils
+  - docker
+  - atomic-openshift-excluder
+  - atomic-openshift-docker-excluder
+  - iptables-services
+  - bridge-utils
+  - bash-completion
+  - docker
+  - httpd-tools
+docker_device: /dev/sdb
+docker_device_partition: "{{ docker_device }}1"
+
+

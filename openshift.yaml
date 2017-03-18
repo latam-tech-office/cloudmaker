@@ -256,31 +256,16 @@
 
 - name: Preparing all hosts to install OpenShift
   hosts: all
-  vars:
-    prereqs_packages:
-      - vim
-      - wget
-      - git
-      - net-tools
-      - bind-utils
-      - docker
-      - atomic-openshift-excluder
-      - atomic-openshift-docker-excluder
-      - iptables-services
-      - bridge-utils
-      - bash-completion
-      - docker
-      - httpd-tools
-    docker_device: /dev/sdb
-    docker_device_partition: "{{ docker_device }}1"
+  vars_files:
+     - cloud.info
   tasks:
-    - name: Use Cloud's Provider internal name as hostname
+    - name: Use Cloud's Provider internal name for naming the nodes
       set_fact: internal_hostname={{ instance_name }}.{{ ansible_dns.search[0] }}
       tags:
          - prepare
 
     - name: Setting the hostname
-      command: hostnamectl set-hostname {{ internal_hostname }}
+      command: hostnamectl set-hostname {{ instance_name }}.{{ openshift_domain }}
       tags:
          - prepare       
 
@@ -328,8 +313,6 @@
   serial: 1
   vars_files:
      - cloud.info
-     - gce/authentication
-     - gce/defaults  
   tasks:
     - name: MASTER{{ ':' }} Use Cloud's Provider internal name as hostname
       set_fact: internal_hostname={{ instance_name }}.{{ ansible_dns.search[0] }}
@@ -351,10 +334,6 @@
 - name: Updating inventory file with OpenShit's Infra hostname
   hosts: openshift_infra
   serial: 1
-  vars_files:
-     - cloud.info
-     - gce/authentication
-     - gce/defaults
   tasks:
     - name: INFRA{{ ':' }} Use Cloud's Provider internal name as hostname
       set_fact: internal_hostname={{ instance_name }}.{{ ansible_dns.search[0] }}
@@ -366,13 +345,11 @@
       tags:
          - infra_inventory
 
+### NODES NODES NODES NODES NODES NODES NODES NODES NODES NODES NODES NODES NODES NODES NODES NODES NODES NODES 
+###   NODES NODES NODES NODES NODES NODES NODES NODES NODES NODES NODES NODES NODES NODES NODES NODES NODES NODES 
 - name: Updating inventory file with OpenShit's Node hostname
   hosts: openshift_nodes
   serial: 1
-  vars_files:
-     - cloud.info
-     - gce/authentication
-     - gce/defaults
   tasks:
     - name: NODE{{ ':' }} Use Cloud's Provider internal name as hostname
       set_fact: internal_hostname={{ instance_name }}.{{ ansible_dns.search[0] }}
@@ -380,20 +357,64 @@
          - node_inventory
 
     - name: NODE{{ ':' }} Adding Hostname into the Inventory file, Node's Section
-      local_action: lineinfile dest=/tmp/ansible_hosts.j2 insertafter="\[nodes\]" state="present" line="{{ node_inventory }} openshift_node_labels=\"{'host'{{ ':' }} 'apps'}\""
+      local_action: lineinfile dest=/tmp/ansible_hosts.j2 insertafter="\[nodes\]" state="present" line="{{ internal_hostname }} openshift_node_labels=\"{'host'{{ ':' }} 'apps'}\""
       tags:
          - node_inventory
 
+
+- name: Disable SSH in all Nodes (except Master)
+  hosts: openshift_infra, openshift_nodes
+  vars_files:
+     - gce/authentication
+  tasks:
+     - set_fact: all_except_master="{{ openshift_infra }}"
+       when: openshift_infra is defined
+       tags:
+          - disable_ssh
+
+     - set_fact: all_except_master="{{ all_except_master }} + {{ openshift_node }}"
+       when: openshift_node is defined
+       tags:
+          - disable_ssh
+
+     - name: Removing SSH tags from Infra and Nodes Host
+       gce_tag:
+         instance_names: "{{ item.name }}"
+         tags: "enable-ssh"
+         zone: "{{ zone }}"
+         state: "absent"
+         project_id: "{{ gce_project_id }}"
+         credentials_file: "{{ gce_credentials_file }}"
+         service_account_email: "{{ gce_service_account_email }}"
+       with_items: "{{ all_except_master  }}"
+       when: all_except_master is defined
+       tags:
+          - disable_ssh
+
+### INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING 
+###  INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING 
 - name: Installing OpenShift's installer on Master
   hosts: openshift_master
   tasks:
-    - name: MASTER{{ ':' }} Creating inventory file into OpenShift's Master
+    - name: INSTALL{{ ':' }} Creating inventory file into OpenShift's Master
       template: src=/tmp/ansible_hosts.j2 dest=/etc/ansible/hosts
       tags:
          - openshift_install
 
-    - name: MASTER{{ ':' }} Installing installer
+    - name: Disable 'host_key_checking' in Ansible
+      lineinfile: dest=/etc/ansible/ansible.cfg regexp="host_key_checking" state=present line="host_key_checking = False"
+      tags:
+         - openshift_install
+
+    - name: INSTALL{{ ':' }} Installing installer
       yum: name="atomic-openshift-utils" state=present
       tags:
          - openshift_install
+
+    - name: INSTALL{{ ':' }} Master's information
+      debug: msg="OpenShift's Master{{ ':' }} ssh root@"
+      when: openshift_master is defined
+      tags:
+         - openshift_install
+
 
