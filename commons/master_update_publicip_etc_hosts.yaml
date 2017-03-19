@@ -1,0 +1,22 @@
+- name: Getting the Status of Master
+  gce:
+    instance_names: "{{ item.name }}"
+    zone: "{{ zone }}"
+    project_id: "{{ gce_project_id }}"
+    credentials_file: "{{ gce_credentials_file }}"
+    service_account_email: "{{ gce_service_account_email }}"
+  with_items: "{{ openshift_master }}"
+  register: master_instance_status
+  when: openshift_master is defined  
+  tags:
+     - create
+     - master
+
+- name: Writing into /etc/hosts the public address for this master (PENDING{{ ':' }} Add that into a Load Balancer)
+  local_action: lineinfile dest=/etc/hosts state=present regexp="{{ item.instance_names[0] }}.{{ openshift_domain }}" line="{{ item.instance_data[0].public_ip }} {{ item.instance_names[0] }}.{{ openshift_domain }}"
+  with_items: "{{ master_instance_status.results }}"
+  when: master_instance_status is defined and openshift_master is defined and item.instance_data[0].status == "RUNNING"
+  become: True
+  tags:
+     - create
+     - master

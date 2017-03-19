@@ -1,0 +1,22 @@
+- name: Getting the Status of Infra
+  gce:
+    instance_names: "{{ item.name }}"
+    zone: "{{ zone }}"
+    project_id: "{{ gce_project_id }}"
+    credentials_file: "{{ gce_credentials_file }}"
+    service_account_email: "{{ gce_service_account_email }}"
+  with_items: "{{ openshift_infra }}"
+  register: infra_instance_status
+  when: openshift_infra is defined  
+  tags:
+     - create
+     - master
+
+- name: Writing into /etc/hosts the public address for this master (PENDING{{ ':' }} Add that into a Load Balancer)
+  lineinfile: dest=/etc/hosts state=present regexp="{{ item }}.cloudapps.{{ openshift_domain }}" line="{{ openshift_infra_public_ip }} {{ item }}.cloudapps.{{ openshift_domain }}"
+  with_items: "{{ common_cloudapps }}"
+  when: infra_instance_status is defined and openshift_infra is defined and item.instance_data[0].status == "RUNNING"
+  become: True
+  tags:
+     - create
+     - infra

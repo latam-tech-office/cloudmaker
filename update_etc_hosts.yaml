@@ -1,0 +1,14 @@
+#!/usr/bin/env ansible-playbook
+--- 
+- name: Fetch status from OpenShift's Master and OpenShift's Infra and update /etc/hosts
+  hosts: localhost
+  connection: local
+  gather_facts: False
+  vars_files:
+     - cloud.info
+     - gce/authentication
+     - gce/defaults
+  tasks:
+    - include: commons/setting_defaults.yaml
+    - include: commons/master_update_publicip_etc_hosts.yaml  
+    - include: commons/infra_update_publicip_etc_hosts.yaml  
