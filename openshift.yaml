@@ -8,45 +8,7 @@
      - gce/authentication
      - gce/defaults
   tasks:
-    - set_fact: region={{ gce_default_region }}
-      when: region is not defined
-      tags:
-         - create
-         - master
-         - infra
-         - node
-
-    - set_fact: zone={{ gce_default_zone }}
-      when: zone is not defined
-      tags:
-         - create
-         - master
-         - infra
-         - node
-
-    - set_fact: network={{ gce_default_network }}
-      when: network is not defined
-      tags:
-         - create
-         - master
-         - infra
-         - node
-    
-    - set_fact: subnetwork={{ gce_default_subnetwork }}
-      when: subnetwork is not defined
-      tags:
-         - create
-         - master
-         - infra
-         - node
-
-    - set_fact: all_instances="{{ openshift_master }}"
-      when: openshift_master is defined
-      tags:
-         - create
-         - master
-         - infra
-         - node
+    - include: commons/settings_defaults.yaml
 
 ### MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER 
 ###  MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER 
@@ -55,10 +17,10 @@
         instance_names: "{{ item.name }}"
         state: "present"
         machine_type: "{{ item.machine }}"
-        image: "rhel73"
+        image: "{{ image }}"
         zone: "{{ zone }}"
-        network: "{{ network }}"
-        subnetwork: "{{ subnetwork }}"
+        network: "{{ network_name }}"
+        subnetwork: "{{ subnetwork_name }}"
         tags: "{{ item.tags }}"
 #        disks:
 #           - name: "{{ item.name }}-main"
@@ -125,10 +87,10 @@
          instance_names: "{{ item.name }}"
          state: "present"
          machine_type: "{{ item.machine }}"
-         image: "rhel73"
+         image: "{{ image }}"
          zone: "{{ zone }}"
-         network: "{{ network }}"
-         subnetwork: "{{ subnetwork }}"
+         network: "{{ network_name }}"
+         subnetwork: "{{ subnetwork_name }}"
          tags: "{{ item.tags }}"
 #        disks:
 #           - name: "{{ item.name }}-main"
@@ -199,10 +161,10 @@
          instance_names: "{{ item.name }}"
          state: "present"
          machine_type: "{{ item.machine }}"
-         image: "rhel73"
+         image: "{{ image }}"
          zone: "{{ zone }}"
-         network: "{{ network }}"
-         subnetwork: "{{ subnetwork }}"
+         network: "{{ network_name }}"
+         subnetwork: "{{ subnetwork_name }}"
          tags: "{{ item.tags }}"
 #        disks:
 #           - name: "{{ item.name }}-main"
