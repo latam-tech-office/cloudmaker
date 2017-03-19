@@ -47,4 +47,20 @@ prereqs_packages:
 docker_device: /dev/sdb
 docker_device_partition: "{{ docker_device }}1"
 
-
+### Most common addresses that it should be add into /etc/hosts
+### (All values here will be add .cloudapps.{{ openshift_domain }})
+common_cloudapps:
+  - gogs
+  - jenkins
+  - nexus
+  - sonarqube
+  - tower
+  - cloudforms
+  - hawkular-metrics
+  - git-rhmap-core
+  - nagios-rhmap-core
+  - rhmap
+  - mbaas-rhmap-mbaas
+  - docker
+  - registry
+  - cake

@@ -1,0 +1,1 @@
+ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@master.example.com "ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/byo/config.yml"

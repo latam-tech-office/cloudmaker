@@ -1,4 +1,3 @@
-#!/usr/bin/env ansible-playbook
 ---
 - name: Creating all the necessary instances
   hosts: localhost
@@ -105,7 +104,16 @@
       add_host: hostname={{ item.instance_data[0].public_ip }} groups=openshift_master
                 ansible_ssh_user=root ansible_ssh_port=22  instance_name={{ item.instance_names[0] }}
       with_items: "{{ master_instance_creation.results }}"
-      when: master_instance_creation is defined
+      when: master_instance_creation is defined and openshift_master is defined
+      tags:
+         - create
+         - master
+
+    - name: Writing into /etc/hosts the public address for this master (PENDING{{ ':' }} Add that into a Load Balancer)
+      lineinfile: dest=/etc/hosts state=present regexp="{{ item.instance_names[0] }}.{{ openshift_domain }}" line="{{ item.instance_data[0].public_ip }} {{ item.instance_names[0] }}.{{ openshift_domain }}"
+      with_items: "{{ master_instance_creation.results }}"
+      when: master_instance_creation is defined and openshift_master is defined
+      become: True
       tags:
          - create
          - master
@@ -162,8 +170,25 @@
       add_host: hostname={{ item.instance_data[0].public_ip }} groups=openshift_infra
                 ansible_ssh_user=root ansible_ssh_port=22   instance_name={{ item.instance_names[0] }}
       with_items: "{{ infra_instance_creation.results }}"
-      when: infra_instance_creation is defined
+      when: infra_instance_creation is defined and openshift_infra is defined
       tags: 
+         - create
+         - infra
+
+    - name: Fetch Infra's Public IP (PENDING{{ ':' }} Add that into a Load Balancer)
+      set_fact: openshift_infra_public_ip={{ item.instance_data[0].public_ip }}
+      with_items: "{{ infra_instance_creation.results }}"
+      when: infra_instance_creation is defined and openshift_infra is defined
+      tags:
+         - create
+         - infra      
+
+    - name: Writing into /etc/hosts the public address for this master (PENDING{{ ':' }} Add that into a Load Balancer)
+      lineinfile: dest=/etc/hosts state=present regexp="{{ item }}.cloudapps.{{ openshift_domain }}" line="{{ openshift_infra_public_ip }} {{ item }}.cloudapps.{{ openshift_domain }}"
+      with_items: "{{ common_cloudapps }}"
+      when: infra_instance_creation is defined and openshift_infra is defined
+      become: True
+      tags:
          - create
          - infra
 
@@ -208,7 +233,7 @@
         credentials_file: "{{ gce_credentials_file }}"
         service_account_email: "{{ gce_service_account_email }}"
       with_items: "{{ openshift_node }}"
-      when: openshift_node is defined
+      when: openshift_node is defined 
       tags:
          - storage
          - docker_disk
@@ -395,6 +420,8 @@
 ###  INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING 
 - name: Installing OpenShift's installer on Master
   hosts: openshift_master
+  vars_files:
+     - cloud.info
   tasks:
     - name: INSTALL{{ ':' }} Creating inventory file into OpenShift's Master
       template: src=/tmp/ansible_hosts.j2 dest=/etc/ansible/hosts
@@ -411,10 +438,13 @@
       tags:
          - openshift_install
 
-    - name: INSTALL{{ ':' }} Master's information
-      debug: msg="OpenShift's Master{{ ':' }} ssh root@"
-      when: openshift_master is defined
-      tags:
+    - name: Update bin/install_openshift.sh to call the right server
+      local_action: copy dest=bin/install_openshift.sh content="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@{{ instance_name }}.{{ openshift_domain }} \"ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/byo/config.yml\""
+      tags: 
          - openshift_install
 
-
+#    - name: INSTALL{{ ':' }} Running
+#      include: /usr/share/ansible/openshift-ansible/playbooks/byo/config.yml
+#      command: ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@{{ instance_name }}.{{ openshift_domain }} "ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/byo/config.yml"
+#      tags:
+#         - openshift_install
