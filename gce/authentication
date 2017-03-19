@@ -1,5 +1,5 @@
 gce_service_account_email: maltron@quick-cacao-157517.iam.gserviceaccount.com
-gce_credentials_file: /home/mauricio/.gce/maltron.json
+gce_credentials_file: /Users/mauricio/.gce/maltron.json
 gce_project_id: quick-cacao-157517
 
 ### Please add the following information in each task in your playbook

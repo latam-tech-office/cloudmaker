@@ -29,14 +29,19 @@
         name: "{{ network_name }}"
         fwname: "{{ item.name }}"
         allowed: "{{ item.allow }}"
-        src_range: "[{{ item.range }}]"
+        src_range: "{{ item.range }}"
         target_tags: "{{ item.tag }}"
         state: present
         project_id: "{{ gce_project_id }}"
         credentials_file: "{{ gce_credentials_file }}"
         service_account_email: "{{ gce_service_account_email }}"  
       with_items: "{{ openshift_firewall_rules }}"
+      register: firewall_response
+      ignore_errors: True
       tags: 
          - create_network       
+         - firewall_rules
+
+    - debug: var=firewall_response
 
 
