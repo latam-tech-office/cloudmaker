@@ -1,0 +1,30 @@
+$ORIGIN .
+$TTL 1 ; 1 seconds (for testing only)
+{{ openshift_domain }}       IN SOA  ns1.{{ openshift_domain }}. hostmaster.{{ openshift_domain }}. (
+            2011112904 ; serial
+            60         ; refresh (1 minute)
+            15         ; retry (15 seconds)
+            1800       ; expire (30 minutes)
+            10         ; minimum (10 seconds)
+            )
+        NS  ns1.{{ openshift_domain }}.
+        MX  10 mail.{{ openshift_domain }}.
+$ORIGIN {{ openshift_domain }}.
+{% if hostvars.localhost.master_instance_status is defined %}
+{% for item in hostvars.localhost.master_instance_status.results %}
+{{ item.instance_names[0] }}  A {{ item.instance_data[0].private_ip }} 
+ns1  A {{ item.instance_data[0].private_ip }}
+{% endfor %}
+{% endif %}
+{% if hostvars.localhost.infra_instance_status is defined %}
+{% for item in hostvars.localhost.infra_instance_status.results %}
+{{ item.instance_names[0] }}  A {{ item.instance_data[0].private_ip }} 
+{% endfor %}
+{% endif %}
+{% if hostvars.localhost.node_instance_status is defined %}
+{% for item in hostvars.localhost.node_instance_status.results %}
+{{ item.instance_names[0] }}  A {{ item.instance_data[0].private_ip }}
+{% endfor %}
+{% endif %}
+
+

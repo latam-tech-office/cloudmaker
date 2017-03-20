@@ -45,3 +45,11 @@
      - master
      - infra
      - node
+
+- set_fact: machine_type={{ gce_default_machine_type }}
+  when: machine_type is not defined
+  tags:
+     - create
+     - master
+     - infra
+     - node

@@ -1,0 +1,4 @@
+master ansible_ssh_user=root ansible_ssh_host=35.185.70.36
+infra ansible_ssh_user=root ansible_ssh_host=35.185.96.174
+node1 ansible_ssh_user=root ansible_ssh_host=35.185.67.246
+node2 ansible_ssh_user=root ansible_ssh_host=35.185.96.113

@@ -1,0 +1,164 @@
+#!/usr/bin/env ansible-playbook
+--- 
+- name: Installing a DNS Server to resolv *.cloudapps.{{ openshift_domain }} for OpenShift's Cluster
+  hosts: localhost
+  connection: local
+  vars_files:
+     - cloud.info
+     - gce/authentication
+     - gce/defaults
+  tasks:
+    - include: commons/setting_defaults.yaml
+    - include: commons/status_all_instances.yaml
+
+    - name: Templating Domain Configuration file (used later)
+      template: src=templates/nameserver/var/named/dynamic/example.com.db.j2 dest=/tmp/{{ openshift_domain }}.db.j2
+
+### PROVISIONING PROVISIONING PROVISIONING PROVISIONING PROVISIONING PROVISIONING PROVISIONING 
+###   PROVISIONING PROVISIONING PROVISIONING PROVISIONING PROVISIONING PROVISIONING PROVISIONING 
+    - name: NETWORK{{ ':' }} Creating DNS entries at the network{{ ':' }} {{ network_name }}
+      gce_net:
+        name: "{{ network_name }}"
+        fwname: "{{ network_name }}-dns"
+        allowed: "tcp:53;udp:53;icmp"
+        src_range: "0.0.0.0/0"
+        target_tags: "dns-server"
+        state: present
+        project_id: "{{ gce_project_id }}"
+        credentials_file: "{{ gce_credentials_file }}"
+        service_account_email: "{{ gce_service_account_email }}"
+      register: firewall_response
+      ignore_errors: True
+      tags:
+         - firewall_rule
+
+    - name: COMPUTE{{ ':' }} Creating an extra instance named "{{ project_name}}-dns" 
+      gce:
+        instance_names: "{{ project_name }}-dns"
+        state: "present"
+        machine_type: "{{ machine_type }}"
+        image: "{{ image }}"
+        zone: "{{ zone }}"
+        network: "{{ network_name }}"
+        subnetwork: "{{ subnetwork_name }}"
+        tags: ["enable-ssh","dns-server"]
+        disk_auto_delete: True
+        project_id: "{{ gce_project_id }}"
+        credentials_file: "{{ gce_credentials_file }}"
+        service_account_email: "{{ gce_service_account_email }}"
+      register: dns_creation
+      tags:
+         - instance
+       
+    - name: Wait for DNS Server to be up
+      wait_for: host="{{ dns_creation.instance_data[0].public_ip }}" port=22   delay=30  state=started
+      when: dns_creation is defined
+      tags:
+         - wait_for
+
+    - name: Fetch's Infra Node Public's IP (it's going to work only if it has one single host)
+      gce:
+        instance_names: "{{ openshift_infra[0].name }}"
+        zone: "{{ zone }}"
+        project_id: "{{ gce_project_id }}"
+        credentials_file: "{{ gce_credentials_file }}"
+        service_account_email: "{{ gce_service_account_email }}"
+      register: infra_instance_status
+      tags:
+         - create
+         - master
+
+    - set_fact: dns_server_public_ip={{ dns_creation.instance_data[0].public_ip }}
+
+    - name: Creating a in-memory inventory{{ ':' }} dns_server
+      add_host: hostname={{ dns_server_public_ip }} groups=dns_server
+                ansible_ssh_user=root ansible_ssh_port=22  instance_name={{ project_name }}-dns router_public_ip={{ openshift_infra_public_ip }}
+      when: dns_creation is defined
+      tags:
+         - create
+         - master
+
+### PREPARING PREPARING PREPARING PREPARING PREPARING PREPARING PREPARING PREPARING PREPARING PREPARING 
+###   PREPARING PREPARING PREPARING PREPARING PREPARING PREPARING PREPARING PREPARING PREPARING PREPARING 
+- name: Installing DNS Server
+  hosts: dns_server
+  vars_files:
+     - cloud.info
+  tasks:
+    - name: Use Cloud's Provider internal name for naming the nodes
+      set_fact: internal_hostname={{ instance_name }}.{{ ansible_dns.search[0] }}
+      tags:
+         - prepare
+
+    - name: Setting the hostname
+      command: hostnamectl set-hostname {{ instance_name }}.{{ openshift_domain }}
+      tags:
+         - prepare
+
+    - name: Install all the necessary packages
+      yum: name={{ item }} update_cache=yes
+      with_items:
+         - bind
+         - bind-utils
+      tags:
+         - prepare
+
+    - name: Templating the configuration file
+      template: src=templates/nameserver/etc/named.conf.j2 dest=/etc/named.conf
+      tags:
+         - prepare
+
+    - name: Templating the CloudApps Configuration file
+      template: src=templates/nameserver/var/named/dynamic/cloudapps.example.com.db.j2 dest=/var/named/dynamic/cloudapps.{{ openshift_domain }}.db
+      tags:
+         - prepare
+
+    - name: Templating Domain Configuration file
+      template: src=/tmp/{{ openshift_domain }}.db.j2 dest=/var/named/dynamic/{{ openshift_domain }}.db
+      tags:
+         - prepare
+
+    - name: Adjust all the permissions in each file created
+      file: path="/etc/named.conf" owner="named" group="named"
+      tags:
+         - prepare
+
+    - name: Restore file default SELinux security context
+      command: "restorecon -v /etc/named.conf"
+      tags:
+         - prepare
+
+    - name: Adjust all the permissions for CloudApps
+      file: path=/var/named/dynamic state=directory owner=named group=named recurse=yes
+      tags:
+         - prepare
+
+    - name: Restore all files default SELinux Security Context
+      command: "restorecon -Rv /var/named/dynamic"
+      tags:
+         - prepare
+
+    - name: Open ports for DNS Service
+      firewalld: service=dns zone=public permanent=true state=enabled immediate=true
+      tags:
+         - prepare
+
+    - name: Start the service for BIND
+      service: name=named state=restarted enabled=true
+      tags:
+         - prepare
+
+
+### ADJUSTING ADJUSTING ADJUSTING ADJUSTING ADJUSTING ADJUSTING ADJUSTING ADJUSTING ADJUSTING ADJUSTING ADJUSTING 
+###   ADJUSTING ADJUSTING ADJUSTING ADJUSTING ADJUSTING ADJUSTING ADJUSTING ADJUSTING ADJUSTING ADJUSTING ADJUSTING 
+- name: Update all Hosts in the Cluster to use newly added DNS Server
+  hosts: openshift_master,openshift_infra,openshift_nodes
+  tasks:
+    - name: Disable PEERDNS in the Network interface eth0
+      lineinfile: dest=/etc/sysconfig/network-scripts/ifcfg-eth0 state=present regexp="^PEERDNS" line="PEERDNS=\"no\""
+
+    - name: Add a DNS1 that points to our newly created DNS Server{{ ':' }} {{ hostvars.localhost.dns_server_public_ip }}
+      lineinfile: dest=/etc/sysconfig/network-scripts/ifcfg-eth0 state=present regexp="^DNS1" line="DNS1=\"{{ hostvars.localhost.dns_server_public_ip }}\""
+   
+    - name: Restart Network Service
+      service: name=network state=restarted

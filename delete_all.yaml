@@ -32,6 +32,18 @@
       tags:
          - instance
 
+    - name: Deleting any existing DNS Server
+      gce:
+        instance_names: "{{ project_name }}-dns"
+        zone: "{{ zone }}"
+        state: "absent"
+        project_id: "{{ gce_project_id }}"
+        credentials_file: "{{ gce_credentials_file }}"
+        service_account_email: "{{ gce_service_account_email }}"
+      tags:
+         - instance
+         - dns
+
     - name: Deleting all Docker Storages
       gce_pd:
         name: "{{ item.name }}-docker"
@@ -58,6 +70,21 @@
       with_items: "{{ openshift_firewall_rules }}"
       tags:
          - network      
+
+    - name: Deleting any DNS rule for Network{{ ':' }} {{ network_name }}
+      gce_net:
+        name: "{{ network_name }}"
+        fwname: "{{ network_name}}-dns"
+        allowed: "tcp:53;udp:53;icmp"
+        src_range: "0.0.0.0/0"
+        target_tags: "dns-server"
+        state: absent
+        project_id: "{{ gce_project_id }}"
+        credentials_file: "{{ gce_credentials_file }}"
+        service_account_email: "{{ gce_service_account_email }}"
+      tags:
+         - network
+         - dns
 
     - name: Deleting Subnetwork created{{ ':' }} {{ subnetwork_name }}
       gce_net:

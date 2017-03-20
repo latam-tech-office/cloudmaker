@@ -1,0 +1,70 @@
+### MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER 
+###  MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER MASTER 
+- name: Fetching status from all OpenShift's Master
+  gce:
+    instance_names: "{{ item.name }}"
+    zone: "{{ zone }}"
+    project_id: "{{ gce_project_id }}"
+    credentials_file: "{{ gce_credentials_file }}"
+    service_account_email: "{{ gce_service_account_email }}"
+  with_items: "{{ openshift_master }}"
+  register: master_instance_status
+  when: openshift_master is defined
+  delegate_to: localhost
+
+- name: Make available OpenShift Master's IP{{ ':' }} item.instance_data[0].public_ip (PENDING{{ ':' }} This should be the Balancer's Public IP instead)
+  set_fact: openshift_master_public_ip={{ item.instance_data[0].public_ip }}
+  with_items: "{{ master_instance_status.results }}"
+  when: master_instance_status is defined and openshift_mater is defined
+
+- name: Add all results into a In-Memory Inventory{{ ':' }} openshift_master
+  add_host: hostname={{ item.instance_data[0].public_ip }} groups=openshift_master
+            ansible_ssh_user=root ansible_ssh_port=22  instance_name={{ item.instance_names[0] }}
+  with_items: "{{ master_instance_status.results }}"
+  when: master_instance_status is defined and openshift_master is defined
+
+### INFRA  INFRA  INFRA  INFRA  INFRA  INFRA  INFRA  INFRA  INFRA  INFRA  INFRA  INFRA  INFRA  INFRA  INFRA  
+###  INFRA  INFRA  INFRA  INFRA  INFRA  INFRA  INFRA  INFRA  INFRA  INFRA  INFRA  INFRA  INFRA  INFRA  INFRA   
+- name: Fetching status from all OpenShift's Infra
+  gce:
+    instance_names: "{{ item.name }}"
+    zone: "{{ zone }}"
+    project_id: "{{ gce_project_id }}"
+    credentials_file: "{{ gce_credentials_file }}"
+    service_account_email: "{{ gce_service_account_email }}"
+  with_items: "{{ openshift_infra }}"
+  register: infra_instance_status
+  when: openshift_infra is defined
+  delegate_to: localhost
+
+- name: Make available OpenShift Infra's IP{{ ':' }} item.instance_data[0].public_ip (PENDING{{ ':' }} This should be the Balancer's Public IP instead)
+  set_fact: openshift_infra_public_ip={{ item.instance_data[0].public_ip }}
+  with_items: "{{ infra_instance_status.results }}"
+  when: infra_instance_status is defined and openshift_infra is defined
+
+- name: Add all results into a In-Memory Inventory{{ ':' }} openshift_infra
+  add_host: hostname={{ item.instance_data[0].public_ip }} groups=openshift_infra
+            ansible_ssh_user=root ansible_ssh_port=22  instance_name={{ item.instance_names[0] }}
+  with_items: "{{ infra_instance_status.results }}"
+  when: master_instance_status is defined and openshift_master is defined
+
+### NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE 
+###  NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE NODE 
+
+- name: Fetching status from all OpenShift's Node
+  gce:
+     instance_names: "{{ item.name }}"
+     zone: "{{ zone }}"
+     project_id: "{{ gce_project_id }}"
+     credentials_file: "{{ gce_credentials_file }}"
+     service_account_email: "{{ gce_service_account_email }}"
+  with_items: "{{ openshift_node }}"
+  register: node_instance_status
+  when: openshift_node is defined
+  delegate_to: localhost
+
+- name: Add all results into a In-Memory Inventory{{ ':' }} openshift_nodes
+  add_host: hostname={{ item.instance_data[0].public_ip }} groups=openshift_nodes
+            ansible_ssh_user=root ansible_ssh_port=22  instance_name={{ item.instance_names[0] }}
+  with_items: "{{ node_instance_status.results }}"
+  when: node_instance_status is defined and openshift_node is defined

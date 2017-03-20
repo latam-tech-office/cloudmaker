@@ -33,7 +33,7 @@
     - name: Create all the necessary firewall rules for network{{ ':' }} {{ network_name }}
       gce_net:
         name: "{{ network_name }}"
-        fwname: "{{ network_name}}-{{ item.name }}"
+        fwname: "{{ network_name }}-{{ item.name }}"
         allowed: "{{ item.allow }}"
         src_range: "{{ item.range }}"
         target_tags: "{{ item.tag }}"
@@ -269,6 +269,8 @@
       tags: 
          - openshift_inventory
 
+### PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE 
+###   PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE 
 - name: Preparing all hosts to install OpenShift
   hosts: all
   vars_files:
