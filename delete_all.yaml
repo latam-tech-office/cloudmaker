@@ -20,7 +20,7 @@
     - set_fact: all_instances="{{ all_instances }} + {{ openshift_node }}"
       when: openshift_node is defined
 
-    - name: Deleting OpenShift's Master instances
+    - name: Deleting ALL OpenShift's instances
       gce:
         instance_names: "{{ item.name }}"
         zone: "{{ zone }}"

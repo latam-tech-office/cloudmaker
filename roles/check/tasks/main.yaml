@@ -29,4 +29,16 @@
   fail: msg="Variable \"gce_project_id\" wasn't defined"
   when: cloud_selection == "GCE" and gce_project_id is not defined
 
+### SUBSCRIPTION MANAGER SUBSCRIPTION MANAGER SUBSCRIPTION MANAGER SUBSCRIPTION MANAGER 
+##   SUBSCRIPTION MANAGER SUBSCRIPTION MANAGER SUBSCRIPTION MANAGER SUBSCRIPTION MANAGER 
+- name: RED HAT{{ ':' }} Variable exists ? {{ ':' }} subscription_manager_username
+  fail: msg="Variable \"subscription_manager_username\" wasn't defined"
+  when: enable_subscription_manager == True and subscription_manager_username is not defined
 
+- name: RED HAT{{ ':' }} Variable exists ? {{ ':' }} subscription_manager_password
+  fail: msg="Variable \"subscription_manager_password\" wasn't defined"
+  when: enable_subscription_manager == True and subscription_manager_password is not defined
+
+- name: RED HAT{{ ':' }} Variable exists ? {{ ':' }} subscription_manager_pool_id
+  fail: msg="Variable \"subscription_manager_pool_id\" wasn't defined"
+  when: enable_subscription_manager == True and subscription_manager_pool_id is not defined

@@ -7,6 +7,7 @@
      - cloud.info
      - gce/authentication
      - gce/defaults
+     - /home/mauricio/.redhat/redhat_subscription
   tasks:
     - include: commons/setting_defaults.yaml
 
@@ -64,7 +65,7 @@
         network: "{{ network_name }}"
         subnetwork: "{{ subnetwork_name }}"
         tags: "{{ item.tags }}"
-#        disks:
+        disks:
 #           - name: "{{ item.name }}-main"
 #             mode: READ_WRITE
 #           - name: "{{ item.name }}-docker"
@@ -106,7 +107,7 @@
 
     - name: Save host data for OpenShift's Master
       add_host: hostname={{ item.instance_data[0].public_ip }} groups=openshift_master
-                ansible_ssh_user=root ansible_ssh_port=22  instance_name={{ item.instance_names[0] }}
+                ansible_ssh_user={{ ssh_remote_user }}  ansible_ssh_port={{ ssh_remote_port }}  instance_name={{ item.instance_names[0] }}
       with_items: "{{ master_instance_creation.results }}"
       when: master_instance_creation is defined and openshift_master is defined
       tags:
@@ -165,7 +166,7 @@
 
     - name: Save host data for OpenShift's Infra
       add_host: hostname={{ item.instance_data[0].public_ip }} groups=openshift_infra
-                ansible_ssh_user=root ansible_ssh_port=22   instance_name={{ item.instance_names[0] }}
+                ansible_ssh_user={{ ssh_remote_user }}  ansible_ssh_port={{ ssh_remote_port }} instance_name={{ item.instance_names[0] }}
       with_items: "{{ infra_instance_creation.results }}"
       when: infra_instance_creation is defined and openshift_infra is defined
       tags: 
@@ -232,7 +233,7 @@
 
     - name: Save host data for OpenShift's Node
       add_host: hostname={{ item.instance_data[0].public_ip }} groups=openshift_nodes
-                ansible_ssh_user=root ansible_ssh_port=22  instance_name={{ item.instance_names[0] }}
+                ansible_ssh_user={{ ssh_remote_user }}  ansible_ssh_port={{ ssh_remote_port }}  instance_name={{ item.instance_names[0] }}
       with_items: "{{ node_instance_creation.results }}"
       when: node_instance_creation is defined and openshift_node is defined
       tags:
@@ -242,21 +243,21 @@
 ### WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR 
 ###   WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR WAIT FOR 
     - name: Wait for OpenShift's Master instances to be up
-      wait_for: host="{{ item.instance_data[0].public_ip }}" port=22   delay=30  state=started
+      wait_for: host="{{ item.instance_data[0].public_ip }}" port={{ ssh_remote_port }}  delay=30  state=started
       with_items: "{{ master_instance_creation.results }}"
       when: master_instance_creation is defined and openshift_master is defined
       tags:
          - wait_for
 
     - name: Wait for OpenShift's Infra instances to be up
-      wait_for: host="{{ item.instance_data[0].public_ip }}" port=22   delay=30  state=started
+      wait_for: host="{{ item.instance_data[0].public_ip }}" port={{ ssh_remote_port }}  delay=30  state=started
       with_items: "{{ infra_instance_creation.results }}"
       when: infra_instance_creation is defined and openshift_infra is defined
       tags:
          - wait_for
 
     - name: Wait for OpenShift's Node instances to be up
-      wait_for: host="{{ item.instance_data[0].public_ip }}" port=22   delay=30  state=started
+      wait_for: host="{{ item.instance_data[0].public_ip }}" port={{ ssh_remote_port }}  delay=30  state=started
       with_items: "{{ node_instance_creation.results }}"
       when: node_instance_creation is defined and openshift_node is defined
       tags:
@@ -269,13 +270,112 @@
       tags: 
          - openshift_inventory
 
+
+### MASTER SSH MASTER SSH MASTER SSH MASTER SSH MASTER SSH MASTER SSH MASTER SSH MASTER SSH 
+###  MASTER SSH MASTER SSH MASTER SSH MASTER SSH MASTER SSH MASTER SSH MASTER SSH MASTER SSH 
+- name: Create SSH Keys on the Master and copy for all hosts in the cluster
+  hosts: openshift_master
+  become: True
+  tasks:
+    - name: Generate keys for Master
+      command: "ssh-keygen -b 4096 -t rsa -f /root/.ssh/id_rsa -q -N \"\""
+
+    - name: Read the content of this key
+      slurp: src=/root/.ssh/id_rsa.pub
+      register: content_encoded
+
+    - name: Define the content of the key
+      set_fact: openshift_master_ssh_key="{{ content_encoded.content | b64decode }}"
+
 ### PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE 
 ###   PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE PREPARE 
 - name: Preparing all hosts to install OpenShift
   hosts: all
+  become: True
   vars_files:
      - cloud.info
+     - /home/mauricio/.redhat/redhat_subscription
   tasks:
+    - name: Allow this host to log as root
+      lineinfile: dest=/etc/ssh/sshd_config state=present regexp="^PermitRootLogin" line="# PermitRootLogin yes"
+      tags:
+         - prepare
+
+    - name: Restart SSHD Service
+      service: name=sshd state=restarted
+      tags:
+         - prepare
+
+    - name: Create OpenShift's Master SSH Key
+      lineinfile: dest=/root/.ssh/authorized_keys state=present create=yes line="{{ hostvars[groups.openshift_master[0]]['openshift_master_ssh_key'] }}"
+      tags:
+         - prepare
+
+    - name: Adding RedMaltron's SSH Key (if exists)
+      lineinfile: dest=/root/.ssh/authorized_keys state=present create=yes line="{{ ssh_key_redmaltron }}"
+      when: ssh_key_redmaltron is defined
+      tags:
+         - prepare
+
+    - name: Adding MacMaltron's SSH Key (if exists)
+      lineinfile: dest=/root/.ssh/authorized_keys state=present create=yes line="{{ ssh_key_macmaltron }}"
+      when: ssh_key_macmaltron is defined
+      tags:
+         - prepare
+
+    - name: RED HAT SUBSCRIPTION{{ ':' }} Installing Red Hat's Subscription Manager
+      yum: name=subscription-manager state=latest
+      ignore_errors: True
+      when: enable_subscription_manager == True
+      tags:
+         - prepare
+
+    - name: List all Repositories already existing in this computer
+      find: paths=/etc/yum.repos.d/ patterns="*.repo"
+      register: existing_repositories
+      when: enable_subscription_manager == True
+      tags:
+         - prepare
+
+    - name: Remove all Repositories files current existing
+      file: path={{ item.path }}  state=absent
+      with_items: "{{ existing_repositories.files }}"
+      when: existing_repositories is defined and enable_subscription_manager == True
+      tags:
+         - prepare
+
+    - name: RED HAT SUBSCRIPTION{{ ':' }} Registering to Red Hat's Subscription Manager
+      command: subscription-manager register --username={{ subscription_manager_username }}  --password={{ subscription_manager_password }}
+      when: enable_subscription_manager == True
+      tags:
+         - prepare
+
+    - name: RED HAT SUBSCRIPTION{{ ':' }} Attaching a Pool ID
+      command: subscription-manager attach --pool={{ subscription_manager_pool_id }}
+      when: enable_subscription_manager == True
+      tags:
+         - prepare
+   
+    - name: RED HAT SUBSCRIPTION{{ ':' }} Disable all Repositories
+      command: subscription-manager repos --disable="*"
+      when: enable_subscription_manager == True
+      tags:
+         - prepare
+
+    - name: RED HAT SUBSCRIPTION{{ ':' }} Enabling Repository
+      command: subscription-manager repos --enable={{ item }}
+      with_items: "{{ subscription_manager_enable_repositories }}"
+      when: enable_subscription_manager == True
+      tags:
+         - prepare
+
+    - name: RED HAT SUBSCRIPTION{{ ':' }} Updating the entire host
+      command: subscription-manager repos --enable={{ item }}
+      with_items: "{{ subscription_manager_enable_repositories }}"
+      when: enable_subscription_manager == True
+      tags:
+         - prepare
+
     - name: Use Cloud's Provider internal name for naming the nodes
       set_fact: internal_hostname={{ instance_name }}.{{ ansible_dns.search[0] }}
       tags:
@@ -412,9 +512,16 @@
 ###  INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING INSTALLING 
 - name: Installing OpenShift's installer on Master
   hosts: openshift_master
+  become: True
   vars_files:
      - cloud.info
+     - /home/mauricio/.redhat/redhat_subscription
   tasks:
+    - name: INSTALL{{ ':' }} Installing installer
+      yum: name="atomic-openshift-utils" state=latest
+      tags:
+         - openshift_install
+
     - name: INSTALL{{ ':' }} Creating inventory file into OpenShift's Master
       template: src=/tmp/ansible_hosts.j2 dest=/etc/ansible/hosts
       tags:
@@ -425,13 +532,8 @@
       tags:
          - openshift_install
 
-    - name: INSTALL{{ ':' }} Installing installer
-      yum: name="atomic-openshift-utils" state=present
-      tags:
-         - openshift_install
-
     - name: Update bin/install_openshift.sh to call the right server
-      local_action: copy dest=bin/install_openshift.sh content="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@{{ instance_name }}.{{ openshift_domain }} \"ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/byo/config.yml\""
+      local_action: copy dest=bin/install_openshift.sh content="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {{ ssh_remote_user }}@{{ instance_name }}.{{ openshift_domain }} \"sudo ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/byo/config.yml\""
       tags: 
          - openshift_install
 

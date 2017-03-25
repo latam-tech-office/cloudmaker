@@ -7,6 +7,7 @@
      - cloud.info
      - gce/authentication
      - gce/defaults
+     - /home/mauricio/.redhat/redhat_subscription
   tasks:
     - include: commons/setting_defaults.yaml
     - include: commons/status_all_instances.yaml
@@ -69,10 +70,11 @@
          - master
 
     - set_fact: dns_server_public_ip={{ dns_creation.instance_data[0].public_ip }}
+    - set_fact: dns_server_private_ip={{ dns_creation.instance_data[0].private_ip }}
 
     - name: Creating a in-memory inventory{{ ':' }} dns_server
       add_host: hostname={{ dns_server_public_ip }} groups=dns_server
-                ansible_ssh_user=root ansible_ssh_port=22  instance_name={{ project_name }}-dns router_public_ip={{ openshift_infra_public_ip }}
+                ansible_ssh_user={{ ssh_remote_user }} ansible_ssh_port={{ ssh_remote_port }} instance_name={{ project_name }}-dns router_public_ip={{ openshift_infra_public_ip }}
       when: dns_creation is defined
       tags:
          - create
@@ -82,6 +84,7 @@
 ###   PREPARING PREPARING PREPARING PREPARING PREPARING PREPARING PREPARING PREPARING PREPARING PREPARING 
 - name: Installing DNS Server
   hosts: dns_server
+  become: True
   vars_files:
      - cloud.info
   tasks:
@@ -158,7 +161,7 @@
       lineinfile: dest=/etc/sysconfig/network-scripts/ifcfg-eth0 state=present regexp="^PEERDNS" line="PEERDNS=\"no\""
 
     - name: Add a DNS1 that points to our newly created DNS Server{{ ':' }} {{ hostvars.localhost.dns_server_public_ip }}
-      lineinfile: dest=/etc/sysconfig/network-scripts/ifcfg-eth0 state=present regexp="^DNS1" line="DNS1=\"{{ hostvars.localhost.dns_server_public_ip }}\""
+      lineinfile: dest=/etc/sysconfig/network-scripts/ifcfg-eth0 state=present regexp="^DNS1" line="DNS1=\"{{ hostvars.localhost.dns_server_private_ip }}\""
    
     - name: Restart Network Service
       service: name=network state=restarted
