@@ -56,20 +56,29 @@
       tags:
          - docker
 
+    - name: Deleting all the Firewall Rules Targeted from Network{{ ':' }} {{ network_name }}
+      gce_net:
+        name: "{{ network_name }}"
+        fwname: "{{ network_name}}-{{ item.name }}"
+        state: absent
+        project_id: "{{ gce_project_id }}"
+        credentials_file: "{{ gce_credentials_file }}"
+        service_account_email: "{{ gce_service_account_email }}"
+      with_items: "{{ openshift_firewall_rules_targeted }}"
+      tags:
+         - network      
+
     - name: Deleting all the Firewall Rules from Network{{ ':' }} {{ network_name }}
       gce_net:
         name: "{{ network_name }}"
         fwname: "{{ network_name}}-{{ item.name }}"
-        allowed: "{{ item.allow }}"
-        src_range: "{{ item.range }}"
-        target_tags: "{{ item.tag }}"
         state: absent
         project_id: "{{ gce_project_id }}"
         credentials_file: "{{ gce_credentials_file }}"
         service_account_email: "{{ gce_service_account_email }}"
       with_items: "{{ openshift_firewall_rules }}"
       tags:
-         - network      
+         - network
 
     - name: Deleting any DNS rule for Network{{ ':' }} {{ network_name }}
       gce_net:

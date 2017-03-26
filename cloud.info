@@ -12,22 +12,24 @@ subnetwork_range: 192.168.0.0/16    # Optional
 # OpenShift Specific Information
 openshift_domain: example.com
 openshift_master: 
-   - { name: "master", machine: "n1-standard-8",  tags: ["enable-ssh","openshift-master"], disk: 40, disk_docker: 125 }
+   - { name: "master", machine: "n1-standard-8",  image: "rhel73-50g", tags: ["enable-ssh","openshift-master"], disk_docker: 20 }
 
 openshift_infra:
-   - { name: "infra",  machine: "n1-standard-4",  tags: ["enable-ssh", "openshift-node", "openshift-infra-node"], disk: 40, disk_docker: 125 }
+   - { name: "infra",  machine: "n1-standard-4",  image: "rhel73-20g", tags: ["enable-ssh", "openshift-infra-node"], disk_docker: 125 }
 
 openshift_node:
-   - { name: "node1", machine: "n1-highmem-2",  tags: ["enable-ssh","openshift-node"], disk: 20, disk_docker: 125 }
-   - { name: "node2", machine: "n1-highmem-2",  tags: ["enable-ssh","openshift-node"], disk: 20, disk_docker: 125 }
-#   - { name: "example-node3", machine: "{{ gce_default_machine_type }}",  tags: ["enable-ssh","openshift-node"], disk_docker: 10 }
-#   - { name: "example-node4", machine: "{{ gce_default_machine_type }}",  tags: ["enable-ssh","openshift-node"], disk_docker: 10 }
+   - { name: "node1", machine: "n1-highmem-2",  image: "rhel73-20g", tags: ["enable-ssh"], disk_docker: 125 }
+   - { name: "node2", machine: "n1-highmem-2",  image: "rhel73-20g", tags: ["enable-ssh"], disk_docker: 125 }
+#   - { name: "example-node3", machine: "{{ gce_default_machine_type }}",  image: "rhel73-20g", tags: ["enable-ssh"], disk_docker: 10 }
+#   - { name: "example-node4", machine: "{{ gce_default_machine_type }}",  image: "rhel73-20g", tags: ["enable-ssh"], disk_docker: 10 }
 
-openshift_firewall_rules:
+openshift_firewall_rules_targeted:
    - { "name":"enable-ssh",                  "allow":"tcp:22",               "range":"0.0.0.0/0",              "tag":"enable-ssh" }
    - { "name":"master",                      "allow":"tcp:8443,9090",        "range":"0.0.0.0/0",              "tag":"openshift-master" }
    - { "name":"infranode",                   "allow":"tcp:80,443,1936",      "range":"0.0.0.0/0",              "tag":"openshift-infra-node" }
-   - { "name":"internal-node-communication", "allow":"tcp:0-65535;udp:0-65535;icmp", "range":"{{ subnetwork_range }}", "tag":"openshift-node" }
+
+openshift_firewall_rules:
+   - { "name":"internal-node-communication", "allow":"tcp:0-65535;udp:0-65535;icmp", "range":"{{ subnetwork_range }}" }
 
 ### Packages needed to install before running OpenShift's installation
 prereqs_packages:

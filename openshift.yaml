@@ -42,8 +42,27 @@
         project_id: "{{ gce_project_id }}"
         credentials_file: "{{ gce_credentials_file }}"
         service_account_email: "{{ gce_service_account_email }}"
+      with_items: "{{ openshift_firewall_rules_targeted }}"
+      ignore_errors: True
+      tags:
+         - create_network
+         - firewall_rules
+         - create
+         - master
+         - infra
+         - node
+
+    - name: Create all the necessary firewall rules for network{{ ':' }} {{ network_name }}
+      gce_net:
+        name: "{{ network_name }}"
+        fwname: "{{ network_name }}-{{ item.name }}"
+        allowed: "{{ item.allow }}"
+        src_range: "{{ item.range }}"
+        state: present
+        project_id: "{{ gce_project_id }}"
+        credentials_file: "{{ gce_credentials_file }}"
+        service_account_email: "{{ gce_service_account_email }}"
       with_items: "{{ openshift_firewall_rules }}"
-      register: firewall_response
       ignore_errors: True
       tags:
          - create_network
@@ -60,7 +79,7 @@
         instance_names: "{{ item.name }}"
         state: "present"
         machine_type: "{{ item.machine }}"
-        image: "{{ image }}"
+        image: "{{ item.image }}"
         zone: "{{ zone }}"
         network: "{{ network_name }}"
         subnetwork: "{{ subnetwork_name }}"
@@ -123,7 +142,7 @@
          instance_names: "{{ item.name }}"
          state: "present"
          machine_type: "{{ item.machine }}"
-         image: "{{ image }}"
+         image: "{{ item.image }}"
          zone: "{{ zone }}"
          network: "{{ network_name }}"
          subnetwork: "{{ subnetwork_name }}"
@@ -190,7 +209,7 @@
          instance_names: "{{ item.name }}"
          state: "present"
          machine_type: "{{ item.machine }}"
-         image: "{{ image }}"
+         image: "{{ item.image }}"
          zone: "{{ zone }}"
          network: "{{ network_name }}"
          subnetwork: "{{ subnetwork_name }}"
