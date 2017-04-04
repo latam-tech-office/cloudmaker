@@ -552,8 +552,13 @@
          - openshift_install
 
     - name: Update bin/install_openshift.sh to call the right server
-      local_action: copy dest=bin/install_openshift.sh content="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {{ ssh_remote_user }}@{{ instance_name }}.{{ openshift_domain }} \"sudo ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/byo/config.yml\""
+      local_action: copy dest=bin/install_openshift.sh content="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {{ ssh_remote_user }}@{{ instance_name }}.{{ openshift_domain }} \"sudo ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/byo/config.yml; ansible-playbook /root/post-install-openshift.yaml\""
       tags: 
+         - openshift_install
+
+    - name: Generating a Post-Install playbook inside the Master named{{ ':' }} /root/post-install-openshift.yaml
+      template: src=templates/post-install-openshift.yaml.j2 dest=/root/post-install-openshift.yaml
+      tags:
          - openshift_install
 
 #    - name: INSTALL{{ ':' }} Running

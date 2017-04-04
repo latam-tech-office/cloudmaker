@@ -3,6 +3,7 @@
 - name: Installing a DNS Server to resolv *.cloudapps.{{ openshift_domain }} for OpenShift's Cluster
   hosts: localhost
   connection: local
+  gather_facts: False
   vars_files:
      - cloud.info
      - gce/authentication

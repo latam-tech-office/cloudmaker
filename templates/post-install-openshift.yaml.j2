@@ -1,8 +1,8 @@
 ---
 - name: Performing operations just after an OpenShift's installation is done
-  hosts: master.example.com
-  vars_files:
-     - cloud.info
+  hosts: localhost
+  connection: local
+  gather_facts: False 
   tasks:
      - name: Modify configuration in Master, so all Pods will be create in host=apps
        lineinfile: dest=/etc/origin/master/master-config.yaml  state=present regexp="defaultNodeSelector" line="  defaultNodeSelector{{ ':' }} \"host=apps\""

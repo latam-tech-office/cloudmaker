@@ -15,7 +15,7 @@
 - name: Writing into /etc/hosts the public address for this master (PENDING{{ ':' }} Add that into a Load Balancer)
   lineinfile: dest=/etc/hosts state=present regexp="{{ item }}.cloudapps.{{ openshift_domain }}" line="{{ openshift_infra_public_ip }} {{ item }}.cloudapps.{{ openshift_domain }}"
   with_items: "{{ common_cloudapps }}"
-  when: infra_instance_status is defined and openshift_infra is defined and item.instance_data[0].status == "RUNNING"
+  when: infra_instance_status is defined and openshift_infra is defined
   become: True
   tags:
      - create
