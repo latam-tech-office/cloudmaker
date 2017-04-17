@@ -110,7 +110,7 @@
          - network
 
     - name: Wait for Subnetwork deleting to settle down
-      pause: seconds=30
+      pause: seconds=10
       tags:
          - network
 
