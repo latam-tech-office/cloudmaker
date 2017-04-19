@@ -1,6 +1,6 @@
-gce_service_account_email: maltron@summit2017-162216.iam.gserviceaccount.com
-gce_credentials_file: /home/mauricio/.gce/summit-demo.json
-gce_project_id: summit2017-162216
+gce_service_account_email: 
+gce_credentials_file: 
+gce_project_id: 
 
 ### Please add the following information in each task in your playbook
 ### project_id="{{ gce_project_id }}" credentials_file="{{ gce_credentials_file }}" service_account_email="{{ gce_service_account_email }}"
