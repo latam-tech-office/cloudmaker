@@ -13,7 +13,7 @@
 
 ### NETWORKING NETWORKING NETWORKING NETWORKING NETWORKING NETWORKING NETWORKING 
 ###  NETWORKING NETWORKING NETWORKING NETWORKING NETWORKING NETWORKING NETWORKING 
-    - name: Creating Network{{ ':'}} {{ network_name }} and Subnetwork{{ ':' }} {{ subnetwork_name }}
+    - name: Creating Network{{ ':' }} {{ network_name }} and Subnetwork{{ ':' }} {{ subnetwork_name }}
       gce_net:
         name: "{{ network_name }}"
         mode: custom
@@ -349,22 +349,8 @@
       tags:
          - prepare
 
-    - name: List all Repositories already existing in this computer
-      find: paths=/etc/yum.repos.d/ patterns="*.repo"
-      register: existing_repositories
-      when: enable_subscription_manager == True
-      tags:
-         - prepare
-
-    - name: Remove all Repositories files current existing
-      file: path={{ item.path }}  state=absent
-      with_items: "{{ existing_repositories.files }}"
-      when: existing_repositories is defined and enable_subscription_manager == True
-      tags:
-         - prepare
-
     - name: RED HAT SUBSCRIPTION{{ ':' }} Registering to Red Hat's Subscription Manager
-      command: subscription-manager register --username={{ subscription_manager_username }}  --password={{ subscription_manager_password }}
+      command: subscription-manager register --username={{ subscription_manager_username }}  --password={{ subscription_manager_password }} --force
       when: enable_subscription_manager == True
       tags:
          - prepare
@@ -375,23 +361,19 @@
       tags:
          - prepare
    
-    - name: RED HAT SUBSCRIPTION{{ ':' }} Disable all Repositories
+    - name: Disable all Repositories
       command: subscription-manager repos --disable="*"
-      when: enable_subscription_manager == True
       tags:
          - prepare
 
-    - name: RED HAT SUBSCRIPTION{{ ':' }} Enabling Repository
+    - name: Enabling Repository
       command: subscription-manager repos --enable={{ item }}
       with_items: "{{ subscription_manager_enable_repositories }}"
-      when: enable_subscription_manager == True
       tags:
          - prepare
 
-    - name: RED HAT SUBSCRIPTION{{ ':' }} Updating the entire host
-      command: subscription-manager repos --enable={{ item }}
-      with_items: "{{ subscription_manager_enable_repositories }}"
-      when: enable_subscription_manager == True
+    - name: Updating the entire host
+      yum: name="*" state=latest
       tags:
          - prepare
 
