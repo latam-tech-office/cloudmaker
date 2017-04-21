@@ -345,19 +345,19 @@
     - name: RED HAT SUBSCRIPTION{{ ':' }} Installing Red Hat's Subscription Manager
       yum: name=subscription-manager state=latest
       ignore_errors: True
-      when: enable_subscription_manager == True
+      when: enable_subscription_manager == "True"
       tags:
          - prepare
 
     - name: RED HAT SUBSCRIPTION{{ ':' }} Registering to Red Hat's Subscription Manager
       command: subscription-manager register --username={{ subscription_manager_username }}  --password={{ subscription_manager_password }} --force
-      when: enable_subscription_manager == True
+      when: enable_subscription_manager == "True"
       tags:
          - prepare
 
     - name: RED HAT SUBSCRIPTION{{ ':' }} Attaching a Pool ID
       command: subscription-manager attach --pool={{ subscription_manager_pool_id }}
-      when: enable_subscription_manager == True
+      when: enable_subscription_manager == "True"
       tags:
          - prepare
    

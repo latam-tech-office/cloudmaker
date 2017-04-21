@@ -66,3 +66,5 @@ common_cloudapps:
   - docker
   - registry
   - cake
+  - locust
+  - business-central
