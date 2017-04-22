@@ -126,7 +126,7 @@
 
     - name: Save host data for OpenShift's Master
       add_host: hostname={{ item.instance_data[0].public_ip }} groups=openshift_master
-                ansible_ssh_user={{ ssh_remote_user }}  ansible_ssh_port={{ ssh_remote_port }}  instance_name={{ item.instance_names[0] }}
+                ansible_user={{ ssh_remote_user }} ansible_password={{ ssh_remote_password }} ansible_port={{ ssh_remote_port }}  instance_name={{ item.instance_names[0] }}
       with_items: "{{ master_instance_creation.results }}"
       when: master_instance_creation is defined and openshift_master is defined
       tags:
@@ -185,7 +185,7 @@
 
     - name: Save host data for OpenShift's Infra
       add_host: hostname={{ item.instance_data[0].public_ip }} groups=openshift_infra
-                ansible_ssh_user={{ ssh_remote_user }}  ansible_ssh_port={{ ssh_remote_port }} instance_name={{ item.instance_names[0] }}
+                ansible_user={{ ssh_remote_user }} ansible_password={{ ssh_remote_password }} ansible_port={{ ssh_remote_port }} instance_name={{ item.instance_names[0] }}
       with_items: "{{ infra_instance_creation.results }}"
       when: infra_instance_creation is defined and openshift_infra is defined
       tags: 
@@ -252,7 +252,7 @@
 
     - name: Save host data for OpenShift's Node
       add_host: hostname={{ item.instance_data[0].public_ip }} groups=openshift_nodes
-                ansible_ssh_user={{ ssh_remote_user }}  ansible_ssh_port={{ ssh_remote_port }}  instance_name={{ item.instance_names[0] }}
+                ansible_user={{ ssh_remote_user }} ansible_password={{ ssh_remote_password }} ansible_port={{ ssh_remote_port }}  instance_name={{ item.instance_names[0] }}
       with_items: "{{ node_instance_creation.results }}"
       when: node_instance_creation is defined and openshift_node is defined
       tags:
