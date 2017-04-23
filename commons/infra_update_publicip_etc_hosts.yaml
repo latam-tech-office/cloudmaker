@@ -7,13 +7,19 @@
     service_account_email: "{{ gce_service_account_email }}"
   with_items: "{{ openshift_infra }}"
   register: infra_instance_status
-  when: openshift_infra is defined  
+  when: openshift_infra is defined
   tags:
      - create
      - master
 
+- set_fact: openshift_infra_public_ip={{ infra_instance_status.results[0].instance_data[0].public_ip }}
+  when: infra_instance_status is defined and openshift_infra is defined
+  tags:
+     - create
+     - infra
+
 - name: Writing into /etc/hosts the public address for this master (PENDING{{ ':' }} Add that into a Load Balancer)
-  lineinfile: dest=/etc/hosts state=present regexp="{{ item }}.cloudapps.{{ openshift_domain }}" line="{{ openshift_infra_public_ip }} {{ item }}.cloudapps.{{ openshift_domain }}"
+  local_action: lineinfile dest=/etc/hosts state=present regexp="{{ item }}.cloudapps.{{ openshift_domain }}" line="{{ openshift_infra_public_ip }} {{ item }}.cloudapps.{{ openshift_domain }}"
   with_items: "{{ common_cloudapps }}"
   when: infra_instance_status is defined and openshift_infra is defined
   become: True
